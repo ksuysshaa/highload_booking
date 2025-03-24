@@ -442,7 +442,6 @@ erDiagram
     OBJECTS ||--o{ USER_INTERACTIONS : receives
     MESSAGES ||--o{ MESSAGE_BUFFER : buffered
 
-
 **Размер хранимых данных рассчитаем исходя из размеров используемых типов:**
 
 - **integer:** 4 байта 
