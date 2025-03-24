@@ -267,7 +267,7 @@ CPU: около 2 мс на соединение.
 
 **1. Общая схема и ключевые сущности**
 
-```mermaid```mermaid
+```mermaid
 erDiagram
     USER {
         integer id PK
@@ -441,6 +441,7 @@ erDiagram
     USER ||--o{ USER_INTERACTIONS : interacts_with
     OBJECTS ||--o{ USER_INTERACTIONS : receives
     MESSAGES ||--o{ MESSAGE_BUFFER : buffered
+```
 
 **Размер хранимых данных рассчитаем исходя из размеров используемых типов:**
 
