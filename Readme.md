@@ -267,7 +267,7 @@ CPU: около 2 мс на соединение.
 
 **1. Общая схема и ключевые сущности**
 
-```mermaid
+```mermaid```mermaid
 erDiagram
     USER {
         integer id PK
