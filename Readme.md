@@ -615,7 +615,6 @@ flowchart LR
       MSG[MESSAGES]
       UI[USER_INTERACTIONS]
       MB[MESSAGE_BUFFER]
-      CNT[COUNTRIES]
     end
 
     %% ElasticSearch Collections
@@ -651,7 +650,6 @@ flowchart LR
     CNT -- defines --> LOC
     BK -- triggers --> MSG
     U -- sends/receives --> MSG
-    U -- searches --> SQ
     U -- interacts_with --> UI
     OBJ -- receives --> UI
     MSG -- buffered --> MB
