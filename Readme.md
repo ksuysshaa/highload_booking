@@ -397,9 +397,10 @@ erDiagram
         timestamp sent_at
     }
 
-    SEARCH_QUERIES {
+    OBJECT_SEARCH {
         integer id PK
         integer user_id FK
+        integer object_id FK
         varchar query_text
         json filters
         timestamp created_at
@@ -469,7 +470,7 @@ erDiagram
 | **LOCATIONS**         | Адреса объектов                                            | ~392 байта            | 8 млн × 0.392 КБ ≈ **3,1 ГБ**                       |
 | **COUNTRIES**         | Справочные данные по странам                               | 71 байт               | ~250 × 0.071 КБ ≈ **18 КБ**                         |
 | **MESSAGES**          | Чат‑сообщения                                              | 212 байт              | ~10 млн × 0.212 КБ ≈ **2,1 ГБ**                     |
-| **SEARCH_QUERIES**    | История поисковых запросов                                 | ~400 байт             | ~200 млн × 0.400 КБ ≈ **80 ГБ**                     |
+| **OBJECT_SEARCH**    | История поисковых запросов                                 | ~400 байт             | ~200 млн × 0.400 КБ ≈ **80 ГБ**                     |
 | **USER_INTERACTIONS** | Логи просмотров/кликов/сохранений для рекомендаций         | ~52 байта             | ~500 млн × 0.052 КБ ≈ **26 ГБ**                     |
 | **MESSAGE_BUFFER**    | Буфер для гарантированной доставки сообщений               | ~48 байт              | ~10 млн × 0.048 КБ ≈ **0,5 ГБ**                     |
 
@@ -488,7 +489,7 @@ erDiagram
 | **BOOKINGS**          | ~250                                          | ~50–100                          |
 | **PAYMENTS**          | постоянное чтение                             | ~50–100                          |
 | **MESSAGES**          | ~50–100                                       | ~30–50                           |
-| **SEARCH_QUERIES**    | ~2 300                                        | ~2 300                           |
+| **OBJECT_SEARCH**    | ~2 300                                        | ~2 300                           |
 | **USER_INTERACTIONS** | ~3 470                                        | ~5–10                            |
 | **MESSAGE_BUFFER**    | минимальное (внутренний буфер)                | ~30–50                           |
 
@@ -612,7 +613,6 @@ flowchart LR
     %% Redis Collections
     subgraph Redis_Collections["Redis Collections"]
       MSG[MESSAGES]
-      SQ[SEARCH_QUERIES]
       UI[USER_INTERACTIONS]
       MB[MESSAGE_BUFFER]
       CNT[COUNTRIES]
@@ -660,7 +660,6 @@ flowchart LR
     OBJ -- indexed_in --> ES
     OBJ -- metrics_data --> CH_METRICS
     MSG -- log --> CH_LOGS
-    OP -- stored_in --> S3_IMAGES
 ```
 
 1. **MongoDB** (основная БД)  
