@@ -590,6 +590,8 @@ erDiagram
 
 **Выбор СУБД и шардирование**
 
+# Диаграмма коллекций и баз данных Booking.com
+
 ```mermaid
 flowchart LR
     %% MongoDB Collections
@@ -616,7 +618,23 @@ flowchart LR
       CNT[COUNTRIES]
     end
 
-    %% Связи между таблицами (между коллекциями)
+    %% ElasticSearch Collections
+    subgraph ElasticSearch_Collections["ElasticSearch"]
+      ES[OBJECT_SEARCH]
+    end
+
+    %% ClickHouse Collections
+    subgraph ClickHouse_Collections["ClickHouse"]
+      CH_METRICS[METRICS]
+      CH_LOGS[LOGS]
+    end
+
+    %% Amazon S3 Collections
+    subgraph S3_Collections["Amazon S3"]
+      S3_IMAGES[IMAGES]
+    end
+
+    %% Основные связи между коллекциями
     U -- owns --> OBJ
     CAT -- classifies --> OBJ
     OBJ -- has --> RM
@@ -637,6 +655,12 @@ flowchart LR
     U -- interacts_with --> UI
     OBJ -- receives --> UI
     MSG -- buffered --> MB
+
+    %% Дополнительные связи для ElasticSearch, ClickHouse и Amazon S3
+    OBJ -- indexed_in --> ES
+    OBJ -- metrics_data --> CH_METRICS
+    MSG -- log --> CH_LOGS
+    OP -- stored_in --> S3_IMAGES
 ```
 
 1. **MongoDB** (основная БД)  
