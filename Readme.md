@@ -267,7 +267,181 @@ CPU: около 2 мс на соединение.
 
 **1. Общая схема и ключевые сущности**
 
-![bd-schema](images/bd-schema.png)
+```mermaid
+erDiagram
+    USER {
+        integer id PK
+        varchar username
+        varchar email
+        varchar password_hash
+        varchar first_name
+        varchar last_name
+        varchar phone
+        enum role
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CATEGORIES {
+        integer id PK
+        varchar name
+        varchar description
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    OBJECTS {
+        integer id PK
+        integer owner_id FK
+        integer category_id FK
+        varchar name
+        text description
+        enum price_range
+        float rating
+        integer location_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ROOMS {
+        integer id PK
+        integer object_id FK
+        varchar room_type
+        smallint occupancy
+        decimal price
+        text description
+        date available_from
+        date available_to
+    }
+
+    BOOKINGS {
+        integer id PK
+        integer user_id FK
+        integer object_id FK
+        integer room_id FK
+        timestamp booking_date
+        date check_in
+        date check_out
+        enum status
+        decimal amount
+    }
+
+    PAYMENTS {
+        integer id PK
+        integer booking_id FK
+        timestamp payment_date
+        decimal amount
+        enum status
+        enum payment_method
+    }
+
+    REVIEWS {
+        integer id PK
+        integer user_id FK
+        integer object_id FK
+        varchar title
+        text body
+        smallint rating
+        date date_of_stay
+        timestamp created_at
+    }
+
+    REVIEW_RESPONSES {
+        integer id PK
+        integer review_id FK
+        integer user_id FK
+        text body
+        timestamp created_at
+    }
+
+    REVIEW_PHOTOS {
+        integer id PK
+        integer review_id FK
+        varchar photo_url
+        timestamp uploaded_at
+    }
+
+    OBJECT_PHOTOS {
+        integer id PK
+        integer object_id FK
+        varchar photo_url
+        varchar caption
+        timestamp uploaded_at
+    }
+
+    LOCATIONS {
+        integer id PK
+        integer object_id FK
+        char country_code
+        varchar region
+        varchar city
+        varchar street
+        varchar postal_code
+    }
+
+    COUNTRIES {
+        integer id PK
+        char iso_code
+        varchar name
+        varchar additional_info
+    }
+
+    MESSAGES {
+        integer id PK
+        enum sender_type
+        integer sender_id
+        enum receiver_type
+        integer receiver_id
+        integer booking_id FK
+        text body
+        timestamp sent_at
+    }
+
+    SEARCH_QUERIES {
+        integer id PK
+        integer user_id FK
+        varchar query_text
+        json filters
+        timestamp created_at
+    }
+
+    USER_INTERACTIONS {
+        integer id PK
+        integer user_id FK
+        integer object_id FK
+        enum event_type
+        timestamp created_at
+    }
+
+    MESSAGE_BUFFER {
+        integer id PK
+        integer message_id FK
+        enum status
+        timestamp created_at
+    }
+
+    USER ||--o{ OBJECTS : owns
+    CATEGORIES ||--o{ OBJECTS : classifies
+    OBJECTS ||--o{ ROOMS : has
+    USER ||--o{ BOOKINGS : makes
+    OBJECTS ||--o{ BOOKINGS : booked
+    ROOMS ||--o{ BOOKINGS : chosen_in
+    BOOKINGS ||--o{ PAYMENTS : paid_by
+    OBJECTS ||--o{ REVIEWS : reviewed
+    USER ||--o{ REVIEWS : writes
+    REVIEWS ||--o{ REVIEW_RESPONSES : answered_by
+    REVIEWS ||--o{ REVIEW_PHOTOS : includes
+    OBJECTS ||--o{ OBJECT_PHOTOS : illustrated_by
+    OBJECTS ||--|| LOCATIONS : located_at
+    COUNTRIES ||--o{ LOCATIONS : defines
+    BOOKINGS ||--o{ MESSAGES : triggers
+    USER ||--o{ REVIEW_RESPONSES : responds
+    USER ||--o{ MESSAGES : sends_receives
+    USER ||--o{ SEARCH_QUERIES : searches
+    USER ||--o{ USER_INTERACTIONS : interacts_with
+    OBJECTS ||--o{ USER_INTERACTIONS : receives
+    MESSAGES ||--o{ MESSAGE_BUFFER : buffered
+
 
 **Размер хранимых данных рассчитаем исходя из размеров используемых типов:**
 
@@ -278,39 +452,45 @@ CPU: около 2 мс на соединение.
 - **date:** 3 байта  
 - **enum:** 4 байта
 
-**Примерная оценка для каждой таблицы:**
+**Примерная оценка для каждой таблицы**  
 
-| Таблица            | Описание                                                   | Пример расчёта среднего размера записи                                                                                                         | Общий объём данных (при условии заданного количества записей)                 |
-|--------------------|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------|
-| **USER**           | Пользователи сервиса (объединяет владельцев и клиентов)     | 4 + 128 + 128 + 128 + 64 + 64 + 32 + 32 + 8 + 8 = **596 байт**                                                                                 | *80 млн пользователей*: 80e6 × 0.596 КБ ≈ **47,68 ГБ**                        |
-| **CATEGORIES**     | Категории объектов (например, «Отель», «Апартаменты»)      | 4 + 32 + 32 + 8 + 8 = **84 байта**                                                                                                               | *10 категорий*: 10 × 0.084 КБ ≈ **0,84 КБ**                                     |
-| **OBJECTS**        | Объекты размещения                                         | 4 + 4 + 4 + 128 + 512 + 32 + 4 + 8 + 8 = **708 байт**                                                                                            | *8 млн объектов*: 8e6 × 0.708 КБ ≈ **5,66 ГБ**                                |
-| **ROOMS**          | Варианты номеров с указанием доступности                    | 4 + 4 + 128 + 2 + 8 + 128 + 3 + 3 = **280 байт**                                                                                                 | Если в среднем 3 варианта на объект, 8e6 × 3 × 0.280 КБ ≈ **6,72 ГБ**           |
-| **BOOKINGS**       | Записи о бронированиях                                     | 4 + 4 + 4 + 4 + 8 + 3 + 3 + 4 + 8 = **42 байта**                                                                                                | *500 млн бронирований*: 500e6 × 0.042 КБ ≈ **21 ГБ**                           |
-| **PAYMENTS**       | Транзакции по бронированиям                                | 4 + 4 + 8 + 8 + 4 + 4 = **32 байта**                                                                                                             | *500 млн платежей*: 500e6 × 0.032 КБ ≈ **16 ГБ**                               |
-| **REVIEWS**        | Отзывы клиентов                                            | 4 + 4 + 4 + 128 + 256 + 2 + 3 + 8 = **409 байт**                                                                                                 | *1 млрд отзывов*: 1e9 × 0.409 КБ ≈ **409 ГБ**                                  |
-| **REVIEW_RESPONSES** | Ответы владельцев на отзывы                               | 4 + 4 + 4 + 256 + 8 = **276 байт**                                                                                                               | *100 млн ответов*: 100e6 × 0.276 КБ ≈ **27,6 ГБ**                             |
-| **REVIEW_PHOTOS**  | Фотографии, прикрепленные к отзывам                        | 4 + 4 + 128 + 8 = **144 байта**                                                                                                                  | *160 млн фото*: 160e6 × 0.144 КБ ≈ **23,04 ГБ**                                |
-| **OBJECT_PHOTOS**  | Фотографии объектов размещения                             | 4 + 4 + 128 + 32 + 8 = **176 байт**                                                                                                              | *80 млн фото*: 80e6 × 0.176 КБ ≈ **14,08 ГБ**                                 |
-| **LOCATIONS**      | Адреса объектов                                            | По аналогии с предыдущими оценками: ~392 байта                                                                                                   | *8 млн объектов*: 8e6 × 0.392 КБ ≈ **3,14 ГБ** (примерно, в зависимости от формата) |
-| **COUNTRIES**      | Справочные данные по странам                               | 4 + 3 + 64 = **71 байт** (примерно)                                                                                                             | *~250 записей*: 250 × 0.071 КБ ≈ **17,75 КБ**                                  |
-| **MESSAGES**       | Чат-сообщения между пользователями                         | 4 + 32 + 4 + 32 + 4 + 128 + 8 = **212 байт** (примерно, если текст сообщения ~128 байт)                                                          | Объём зависит от активности чата (например, 10 млн сообщений – ≈ 2,12 ГБ)         |
+| Таблица               | Описание                                                   | Средний размер записи | Общий объём данных (≈)                              |
+|-----------------------|------------------------------------------------------------|-----------------------|----------------------------------------------------|
+| **USER**              | Пользователи сервиса (включая владельцев и клиентов)       | 596 байт              | 80 млн × 0.596 КБ ≈ **47,7 ГБ**                     |
+| **CATEGORIES**        | Категории объектов (например, «Отель», «Апартаменты»)       | 84 байта              | 10 × 0.084 КБ ≈ **0,84 КБ**                         |
+| **OBJECTS**           | Объекты размещения                                         | 708 байт              | 8 млн × 0.708 КБ ≈ **5,7 ГБ**                       |
+| **ROOMS**             | Варианты номеров с периодами доступности                   | 280 байт              | 8 млн × 3 × 0.280 КБ ≈ **6,7 ГБ**                   |
+| **BOOKINGS**          | Записи о бронированиях                                     | 42 байта              | 500 млн × 0.042 КБ ≈ **21 ГБ**                      |
+| **PAYMENTS**          | Транзакции по бронированиям                                | 32 байта              | 500 млн × 0.032 КБ ≈ **16 ГБ**                      |
+| **REVIEWS**           | Отзывы клиентов                                            | 409 байт              | 1 млрд × 0.409 КБ ≈ **409 ГБ**                      |
+| **REVIEW_RESPONSES**  | Ответы владельцев на отзывы                                | 276 байт              | 100 млн × 0.276 КБ ≈ **27,6 ГБ**                    |
+| **REVIEW_PHOTOS**     | Фотографии к отзывам                                       | 144 байта             | 160 млн × 0.144 КБ ≈ **23,0 ГБ**                    |
+| **OBJECT_PHOTOS**     | Фотографии объектов                                        | 176 байт              | 80 млн × 0.176 КБ ≈ **14,1 ГБ**                     |
+| **LOCATIONS**         | Адреса объектов                                            | ~392 байта            | 8 млн × 0.392 КБ ≈ **3,1 ГБ**                       |
+| **COUNTRIES**         | Справочные данные по странам                               | 71 байт               | ~250 × 0.071 КБ ≈ **18 КБ**                         |
+| **MESSAGES**          | Чат‑сообщения                                              | 212 байт              | ~10 млн × 0.212 КБ ≈ **2,1 ГБ**                     |
+| **SEARCH_QUERIES**    | История поисковых запросов                                 | ~400 байт             | ~200 млн × 0.400 КБ ≈ **80 ГБ**                     |
+| **USER_INTERACTIONS** | Логи просмотров/кликов/сохранений для рекомендаций         | ~52 байта             | ~500 млн × 0.052 КБ ≈ **26 ГБ**                     |
+| **MESSAGE_BUFFER**    | Буфер для гарантированной доставки сообщений               | ~48 байт              | ~10 млн × 0.048 КБ ≈ **0,5 ГБ**                     |
 
-**Нагрузка на чтение и запись (RPS)**
+---
 
-Оценка RPS (Requests Per Second) производится на основе типичных сценариев использования сервиса. Приведём примерные значения:
+**Нагрузка на чтение и запись (RPS)**  
 
-| Таблица       | Средняя нагрузка на чтение (RPS)                                              | Средняя нагрузка на запись (RPS)                       |
-|---------------|------------------------------------------------------------------------------|--------------------------------------------------------|
-| **USER**      | ~1 (просмотр профиля)     | ~1,4 (регистрация, обновление профиля)                 |
-| **REVIEWS**   | ~2082 (просмотр отзывов) + ~520 (подсчет рейтинга объекта) ≈ **2602 RPS**      | ~0,5 (публикация нового отзыва)                        |
-| **REVIEW_RESPONSES** | ~200 (просмотр ответов)                                              | ~0,005 (публикация ответа)                             |
-| **REVIEW_PHOTOS**  | ~347 (просмотр галерей отзывов)                                         | ~0,08 (загрузка фото)                                  |
-| **OBJECTS**   | ~520 (просмотр карточки объекта) + ~173 (поиск объектов) ≈ **693 RPS**         | ~0,042 (новых объектов в год распределены равномерно)    |
-| **OBJECT_PHOTOS** | ~693 (просмотр фото объекта)                                             | ~0,42 (если у объекта в среднем 10 фото)               |
-| **BOOKINGS**  | ~200–300 (просмотр бронирований)                                             | ~50–100 (создание, изменение или отмена бронирования)  |
-| **PAYMENTS**  | Постоянное чтение для формирования отчетности                                | ~50–100 (новые платежные транзакции)                   |
-| **MESSAGES**  | ~50–100 (просмотр чатов)                                                       | ~30–50 (отправка новых сообщений)                      |
+| Таблица               | Средняя нагрузка на чтение (RPS)               | Средняя нагрузка на запись (RPS) |
+|-----------------------|-----------------------------------------------|----------------------------------|
+| **USER**              | ~2 083                                        | ~1.4                             |
+| **REVIEWS**           | ~2 602                                        | ~0.5                             |
+| **REVIEW_RESPONSES**  | ~200                                          | ~0.005                           |
+| **REVIEW_PHOTOS**     | ~347                                          | ~0.08                            |
+| **OBJECTS**           | ~693                                          | ~0.042                           |
+| **OBJECT_PHOTOS**     | ~693                                          | ~0.42                            |
+| **BOOKINGS**          | ~250                                          | ~50–100                          |
+| **PAYMENTS**          | постоянное чтение                             | ~50–100                          |
+| **MESSAGES**          | ~50–100                                       | ~30–50                           |
+| **SEARCH_QUERIES**    | ~2 300                                        | ~2 300                           |
+| **USER_INTERACTIONS** | ~3 470                                        | ~5–10                            |
+| **MESSAGE_BUFFER**    | минимальное (внутренний буфер)                | ~30–50                           |
 
 **Требования для отдельных таблиц**
 - USER: 
@@ -380,6 +560,9 @@ CPU: около 2 мс на соединение.
 
 **Консистентность дат:**
 Даты, такие как check_in/check_out для бронирований, date_of_stay для отзывов и периоды доступности в ROOMS, должны быть логически связаны (например, дата заезда не может быть позже даты выезда).
+
+
+
 
 ## Список источников
 
